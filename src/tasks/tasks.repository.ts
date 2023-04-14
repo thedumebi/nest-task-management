@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common'
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger
+} from '@nestjs/common'
 import {
   DataSource,
   // EntityRepository,
@@ -12,6 +16,8 @@ import { User } from 'src/auth/user.entity'
 
 @Injectable()
 export class TasksRepository extends Repository<Task> {
+  private logger = new Logger('TasksRepository', { timestamp: true })
+
   constructor(private dataSource: DataSource) {
     super(Task, dataSource.createEntityManager())
   }
@@ -32,9 +38,19 @@ export class TasksRepository extends Repository<Task> {
       )
     }
 
-    const tasks = await query.getMany()
+    try {
+      const tasks = await query.getMany()
 
-    return tasks
+      return tasks
+    } catch (err) {
+      this.logger.error(
+        `Failed to get tasks for user "${
+          user.username
+        }". Filters: ${JSON.stringify(filterDto)}`,
+        err.stack
+      )
+      throw new InternalServerErrorException()
+    }
   }
 
   async createTask(createTaskDto: CreateTaskDto, user: User): Promise<Task> {
